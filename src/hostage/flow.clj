@@ -5,8 +5,7 @@
    [hostage.expect :refer [assertion-message]]
    [hostage.reporter.append-only :as append-only]
    [hostage.reporter.proto :as reporter]
-   [hostage.state :refer [*debug* *disabled-tags* *dry-run?*
-                          *execution-state* *reporter*]]))
+   [hostage.state :refer [*debug* *dry-run?* *env*]]))
 
 (declare run-step)
 
@@ -14,32 +13,37 @@
                               ::summaries []})
 
 (defn enqueue-cleanup-task [f]
-  (when-let [state-atom *execution-state*]
+  (when-let [state-atom (::state *env*)]
     (swap! state-atom update ::cleanup-tasks conj f)))
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn summary [& parts]
-  (when-let [state-atom *execution-state*]
+  (when-let [state-atom (::state *env*)]
     (swap! state-atom update ::summaries conj parts)))
 
-(defn perform-cleanup [execution-state]
-  (swap! execution-state
-         (fn [{::keys [cleanup-tasks] :as state}]
-           (when (seq cleanup-tasks)
-             (run-step {:name "Cleanup!"}
-                       (fn []
-                         (doseq [task cleanup-tasks]
-                           (task)))))
+(defn perform-cleanup
+  ([] (perform-cleanup (::state *env*)))
+  ([execution-state]
+   (swap! execution-state
+          (fn [{::keys [cleanup-tasks] :as state}]
+            (when (seq cleanup-tasks)
+              (run-step {:name "Cleanup!"}
+                        (fn []
+                          (doseq [task cleanup-tasks]
+                            (task)))))
 
-           (update state dissoc ::cleanup-tasks))))
+            (update state dissoc ::cleanup-tasks)))))
 
-(defn perform-summary [execution-state]
-  (swap! execution-state
-         (fn [{::keys [summaries] :as state}]
-           (when (seq summaries)
-             (doseq [summary summaries]
-               (apply println summary)))
+(defn perform-summary
+  ([] (perform-summary (::state *env*)))
+  ([execution-state]
+   (swap! execution-state
+          (fn [{::keys [summaries] :as state}]
+            (when (seq summaries)
+              (doseq [summary summaries]
+                (apply println summary)))
 
-           (update state dissoc ::summaries))))
+            (update state dissoc ::summaries)))))
 
 (defn extract-disabled-tags [args]
   (let [prefix "--skip-"]
@@ -53,20 +57,18 @@
   (append-only/create *out* *err*))
 
 (defmacro execute [opts & body]
-  `(binding [*debug* (:debug ~opts)
-             *disabled-tags* (:disabled-tags ~opts)
-             *dry-run?* (:dry-run? ~opts)
-             *execution-state* (atom default-execution-state)
-             *reporter* (:reporter ~opts)]
+  `(binding [*env* ~opts
+             *debug* (:debug ~opts)
+             *dry-run?* (:dry-run? ~opts)]
      (try
-       (reporter/begin *reporter*)
+       (reporter/begin (:reporter *env*))
 
        ~@body
 
-       (perform-cleanup *execution-state*)
-       (reporter/end *reporter*)
+       (perform-cleanup)
+       (reporter/end (:reporter *env*))
 
-       (perform-summary *execution-state*)
+       (perform-summary)
        (catch Throwable e#
          (let [msg# (assertion-message e#)]
            (if (and msg# (not *debug*))
@@ -74,15 +76,19 @@
              (.printStackTrace e#))
            (System/exit 1))))))
 
+(defn build-env-from-args [args]
+  {:debug (some #{"--debug"} args)
+   :dry-run? (when (some #{"--dry-run"} args)
+               "dry-run")
+   :disabled-tags (extract-disabled-tags args)
+   :reporter (extract-reporter args)
+   ::state (atom default-execution-state)})
+
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro main [& body]
   `(do (defn ~'-main [& args#]
-         (let [opts# {:debug (some #{"--debug"} args#)
-                      :dry-run? (when (some #{"--dry-run"} args#)
-                                  "dry-run")
-                      :disabled-tags (extract-disabled-tags args#)
-                      :reporter (extract-reporter args#)}]
-           (execute opts# ~@body)))
+         (let [env# (build-env-from-args args#)]
+           (execute env# ~@body)))
 
        (when (= *file* (System/getProperty "babashka.file"))
          (apply ~'-main *command-line-args*))))
@@ -90,11 +96,11 @@
 (defn run-step [{:keys [always-run? tag] :as opts} f]
   (let [skip-reason (or (when (and *dry-run?* (not always-run?))
                           "dry-run")
-                        (*disabled-tags* tag))]
+                        ((:disabled-tags *env*) tag))]
     (binding [*dry-run?* skip-reason]
-      (reporter/begin-step *reporter* opts)
+      (reporter/begin-step (:reporter *env*) opts)
       (f)
-      (reporter/end-step *reporter* opts))))
+      (reporter/end-step (:reporter *env*) opts))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro with-step [name-or-opts & body]
