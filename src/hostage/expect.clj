@@ -13,11 +13,10 @@
   (when (assertion-error? v)
     (ex-message v)))
 
-(defn >some? [error-message v]
+(defn >some? [v error-message]
   (if (some? v)
     v
 
-    ; TODO: Subclass we can case on for "expected" failures
     (throw (assertion-error error-message {:value v}))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
