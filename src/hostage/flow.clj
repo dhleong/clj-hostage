@@ -1,7 +1,8 @@
 (ns hostage.flow
   (:require
    [babashka.process :as process]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [hostage.expect :refer [assertion-message]]))
 
 (defonce ^:dynamic *debug* false)
 (defonce ^:dynamic *disabled-tags* #{})
@@ -21,7 +22,7 @@
      (try
        ~@body
        (catch Throwable e#
-         (let [msg# (ex-message e#)]
+         (let [msg# (assertion-message e#)]
            (if (and msg# (not *debug*))
              (println "[ERROR] " msg#)
              (.printStackTrace e#))

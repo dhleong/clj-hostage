@@ -2,7 +2,8 @@
   (:require
    [babashka.process :refer [shell]]
    [clojure.java.io :refer [file]]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [hostage.expect :as expect]))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn named [n]
@@ -37,6 +38,7 @@
          editor "-c" "silent put =$NOTES_CONTENT"
          (.getAbsolutePath (file f))))
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn edit [f {:keys [build-initial-content
                       delete-before-editing?
                       ensure-created?]}]
@@ -53,6 +55,7 @@
 
     ; TODO: Could we automatically add a cleanup step to delete the file?
 
-    (when (and ensure-created?
-               (not (exists? f)))
-      (throw (ex-info (str "Aborted due to empty " (simple-name f)) {})))))
+    (expect/truthy?
+     (or (not ensure-created?)
+         (exists? f))
+     (str "Aborted due to empty " (simple-name f)))))
