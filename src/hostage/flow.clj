@@ -1,5 +1,7 @@
 (ns hostage.flow
-  (:require [babashka.process :as process]))
+  (:require
+   [babashka.process :as process]
+   [clojure.string :as str]))
 
 (defonce ^:dynamic *dry-run?* false)
 (defonce ^:dynamic *debug* false)
@@ -26,17 +28,22 @@
        (when (= *file* (System/getProperty "babashka.file"))
          (apply ~'-main *command-line-args*))))
 
+(defn run-step [{:keys [always-run? name]} f]
+  ; TODO: Support skipping by :tag
+  (let [should-run? (or (not *dry-run?*)
+                        always-run?)]
+    (binding [*dry-run?* (not should-run?)]
+      (if should-run?
+        (println "[run]" name)
+        (println "[skip - dry run]" name))
+      (f))))
+
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro with-step [name-or-opts & body]
   (let [opts (if (map? name-or-opts)
                name-or-opts
                {:name name-or-opts})]
-    ; TODO: Support skipping by :tag
-    `(if (or (not *dry-run?*)
-             ~(:always-run? opts))
-       (do (println "[run]" ~(:name opts))
-           ~@body)
-       (println "[skip - dry run]" ~(:name opts)))))
+    `(run-step ~opts (fn [] ~@body))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro with-step-always [step-name & body]
@@ -45,4 +52,11 @@
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn shell [command & args]
-  (apply process/shell command args))
+  (println
+   (if *dry-run?*
+     "[skip - dry-run]"
+     "[run]")
+   "shell: " (->> (into [command] args)
+                  (remove map?)))
+  (when-not *dry-run?*
+    (apply process/shell command args)))

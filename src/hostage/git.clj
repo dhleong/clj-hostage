@@ -2,7 +2,8 @@
   (:require
    [babashka.process :refer [sh shell]]
    [clojure.string :as str]
-   [hostage.coll :refer [lazier-map]]))
+   [hostage.coll :refer [lazier-map]]
+   [hostage.flow :as flow]))
 
 (defn tags-on-branch [{:keys [branch search-depth]
                        :or {branch "main"
@@ -34,8 +35,8 @@
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn tag-create [tag]
-  (shell {:out :string}
-         "git tag" (:name tag)))
+  (flow/shell {:out :string}
+              "git tag" (:name tag)))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn tag-exists? [tag]
@@ -47,8 +48,8 @@
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn tag-push [tag remote]
-  (shell {:out :string}
-         "git push" remote (:name tag)))
+  (flow/shell {:out :string}
+              "git push" remote (:name tag)))
 
 (defn- parse-tag-date [date-str]
   (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss Z")]

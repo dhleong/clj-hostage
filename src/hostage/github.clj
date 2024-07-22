@@ -1,7 +1,8 @@
 (ns hostage.github
   (:require
    [babashka.process :refer [shell]]
-   [cheshire.core :as json]))
+   [cheshire.core :as json]
+   [hostage.flow :as flow]))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn release [version-name]
@@ -9,11 +10,11 @@
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn release-create [release {:keys [body]}]
-  (shell {:out :string
-          :in (or body "")}
-         "gh release create"
-         (:version-name release)
-         "--notes" "-"))
+  (flow/shell {:out :string
+               :in (or body "")}
+              "gh release create"
+              (:version-name release)
+              "--notes" "-"))
 
 (defn search-issues [search-query]
   (-> (shell {:out :string}
