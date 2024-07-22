@@ -3,7 +3,8 @@
    [babashka.process :refer [shell]]
    [clojure.java.io :refer [file]]
    [clojure.string :as str]
-   [hostage.expect :as expect]))
+   [hostage.expect :as expect]
+   [hostage.flow :as flow]))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn named [n]
@@ -41,7 +42,9 @@
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn edit [f {:keys [build-initial-content
                       delete-before-editing?
-                      ensure-created?]}]
+                      cleanup?
+                      ensure-created?]
+               :or {cleanup? true}}]
   (let [initial-content (or (content f)
                             (when build-initial-content
                               (build-initial-content))
@@ -53,7 +56,10 @@
                 :f f
                 :content initial-content})
 
-    ; TODO: Could we automatically add a cleanup step to delete the file?
+    ; Automatically add a cleanup step to delete the file
+    (when cleanup?
+      (flow/enqueue-cleanup-task
+       #(delete f)))
 
     (expect/truthy?
      (or (not ensure-created?)
