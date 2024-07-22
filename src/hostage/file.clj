@@ -39,29 +39,42 @@
          editor "-c" "silent put =$NOTES_CONTENT"
          (.getAbsolutePath (file f))))
 
+(defn- perform-edit [f {:keys [initial-content
+                               delete-before-editing?
+                               ensure-created?]}]
+  (when delete-before-editing?
+    (delete f))
+
+  (edit-with {:editor (System/getenv "EDITOR")
+              :f f
+              :content initial-content})
+
+  (expect/truthy?
+   (or (not ensure-created?)
+       (exists? f))
+   (str "Aborted due to empty " (simple-name f))))
+
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn edit [f {:keys [build-initial-content
-                      delete-before-editing?
+                      always-edit?
+                      _delete-before-editing?
                       cleanup?
-                      ensure-created?]
-               :or {cleanup? true}}]
-  (let [initial-content (or (content f)
-                            (when build-initial-content
-                              (build-initial-content))
-                            "")]
-    (when delete-before-editing?
-      (delete f))
-
-    (edit-with {:editor (System/getenv "EDITOR")
-                :f f
-                :content initial-content})
+                      _ensure-created?]
+               :or {cleanup? true}
+               :as params}]
+  (let [existing-content (content f)]
+    (if (or always-edit?
+            (not existing-content)
+            (empty? existing-content))
+      (perform-edit f (assoc params
+                             :initial-content
+                             (or existing-content
+                                 (when build-initial-content
+                                   (build-initial-content))
+                                 "")))
+      (println "Reusing existing content in " (simple-name f)))
 
     ; Automatically add a cleanup step to delete the file
     (when cleanup?
       (flow/enqueue-cleanup-task
-       #(delete f)))
-
-    (expect/truthy?
-     (or (not ensure-created?)
-         (exists? f))
-     (str "Aborted due to empty " (simple-name f)))))
+       #(delete f)))))
