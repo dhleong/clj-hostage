@@ -10,11 +10,16 @@
 
 (declare run-step)
 
-(def default-execution-state {::cleanup-tasks []})
+(def default-execution-state {::cleanup-tasks []
+                              ::summaries []})
 
 (defn enqueue-cleanup-task [f]
   (when-let [state-atom *execution-state*]
     (swap! state-atom update ::cleanup-tasks conj f)))
+
+(defn summary [& parts]
+  (when-let [state-atom *execution-state*]
+    (swap! state-atom update ::summaries conj parts)))
 
 (defn perform-cleanup [execution-state]
   (swap! execution-state
@@ -26,6 +31,15 @@
                            (task)))))
 
            (update state dissoc ::cleanup-tasks))))
+
+(defn perform-summary [execution-state]
+  (swap! execution-state
+         (fn [{::keys [summaries] :as state}]
+           (when (seq summaries)
+             (doseq [summary summaries]
+               (apply println summary)))
+
+           (update state dissoc ::summaries))))
 
 (defn extract-disabled-tags [args]
   (let [prefix "--skip-"]
@@ -49,9 +63,10 @@
 
        ~@body
 
+       (perform-cleanup *execution-state*)
        (reporter/end *reporter*)
 
-       (perform-cleanup *execution-state*)
+       (perform-summary *execution-state*)
        (catch Throwable e#
          (let [msg# (assertion-message e#)]
            (if (and msg# (not *debug*))
