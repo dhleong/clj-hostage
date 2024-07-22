@@ -24,8 +24,31 @@
     (catch Exception _
       nil)))
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn tag-latest [params]
   (first (tags-on-branch params)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn tag [name]
+  {:name name})
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn tag-create [tag]
+  (shell {:out :string}
+         "git tag" (:name tag)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn tag-exists? [tag]
+  (-> (shell {:out :string}
+             "git tag -l" (:name tag))
+      :out
+      (seq)
+      (some?)))
+
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn tag-push [tag remote]
+  (shell {:out :string}
+         "git push" remote (:name tag)))
 
 (defn- parse-tag-date [date-str]
   (let [formatter (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss Z")]

@@ -4,6 +4,7 @@
    [clojure.java.io :refer [file]]
    [clojure.string :as str]))
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn named [n]
   (file n))
 
@@ -11,6 +12,7 @@
   (.getName (file f)))
 
 (defn content [f]
+  ; TODO: Might be nice to implement deref on this File as a convenience
   (try (slurp (file f))
        (catch java.io.FileNotFoundException _
          nil)))
@@ -48,6 +50,8 @@
     (edit-with {:editor (System/getenv "EDITOR")
                 :f f
                 :content initial-content})
+
+    ; TODO: Could we automatically add a cleanup step to delete the file?
 
     (when (and ensure-created?
                (not (exists? f)))
