@@ -80,4 +80,5 @@
       (-> (apply shell {:out :string}
                  "git log"
                  params)
-          :out))))
+          :out
+          println))))
