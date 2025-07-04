@@ -14,7 +14,7 @@
                :in (or body "")}
               "gh release create"
               (:version-name release)
-              "--notes" "-"))
+              "--notes-file" "-"))
 
 (defn search-issues [search-query]
   (-> (shell {:out :string}
