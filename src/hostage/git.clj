@@ -2,7 +2,7 @@
   (:require
    [babashka.process :refer [sh shell]]
    [clojure.string :as str]
-   [hostage.coll :refer [lazier-map]]
+   [hostage.coll :refer [lazier-keep]]
    [hostage.flow :as flow]))
 
 (defn tags-on-branch [{:keys [branch search-depth]
@@ -15,13 +15,15 @@
                 (str "--max-count=" search-depth))
          :out
          (str/split-lines)
-         (lazier-map
+         (lazier-keep
           (fn [commit-hash]
-            {:name (-> (sh "git describe --tags --exact-match"
-                           commit-hash)
-                       :out
-                       (str/trim))
-             :hash commit-hash})))
+            (let [tag-name (-> (sh "git describe --tags --exact-match"
+                                   commit-hash)
+                               :out
+                               (str/trim))]
+              (when (seq tag-name)
+                {:name tag-name
+                 :hash commit-hash})))))
     (catch Exception _
       nil)))
 

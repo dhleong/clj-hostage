@@ -8,3 +8,11 @@
    (when-let [s (seq coll)]
      (cons (f (first s))
            (lazier-map f (rest s))))))
+
+(defn lazier-keep [f coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [v (f (first s))]
+       (if (nil? v)
+         (lazier-keep f (rest s))
+         (cons v (lazier-keep f (rest s))))))))
