@@ -1,5 +1,6 @@
 (ns hostage.coll)
 
+#_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
 (defn lazier-map [f coll]
   ; NOTE: clojure.core/map does some batching based on chunked-seq?
   ; Use this if your f is doing something very expensive and you don't
