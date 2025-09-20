@@ -4,17 +4,21 @@
    [cheshire.core :as json]
    [hostage.flow :as flow]))
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn release [version-name]
   {:version-name version-name})
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn release-create [release {:keys [body]}]
   (flow/shell {:out :string
                :in (or body "")}
               "gh release create"
               (:version-name release)
               "--notes-file" "-"))
+
+(defn release-upload [release & files]
+  (apply flow/shell {:out :string}
+         "gh release upload"
+         (:version-name release)
+         files))
 
 (defn search-issues [search-query]
   (-> (shell {:out :string}
