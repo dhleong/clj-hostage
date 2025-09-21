@@ -18,7 +18,7 @@
   (apply flow/shell {:out :string}
          "gh release upload"
          (:version-name release)
-         files))
+         (flatten files)))
 
 (defn search-issues [search-query]
   (-> (shell {:out :string}
