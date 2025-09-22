@@ -1,5 +1,6 @@
 (ns hostage.flow
   (:require
+   [babashka.cli :as cli]
    [babashka.process :as process]
    [clojure.string :as str]
    [hostage.expect :refer [assertion-message]]
@@ -52,6 +53,11 @@
          (map #(keyword (subs % (count prefix))))
          (into #{}))))
 
+(defn extract-allowed-steps [args]
+  (let [{:keys [allow]} (cli/parse-opts args {:coerce {:allow []}})]
+    (when (seq allow)
+      (into #{} allow))))
+
 (defn extract-reporter [_args]
   ; TODO: Other reporters?
   (append-only/create *out* *err*))
@@ -81,6 +87,7 @@
    :dry-run? (when (some #{"--dry-run"} args)
                "dry-run")
    :disabled-tags (extract-disabled-tags args)
+   :allowed-steps (extract-allowed-steps args)
    :reporter (extract-reporter args)
    ::state (atom default-execution-state)})
 
@@ -96,7 +103,10 @@
 (defn run-step [{:keys [always-run? tag] :as opts} f]
   (let [skip-reason (or (when (and *dry-run?* (not always-run?))
                           "dry-run")
-                        ((:disabled-tags *env*) tag))]
+                        ((:disabled-tags *env*) tag)
+                        (when (:allowed-steps *env*)
+                          (when-not ((:allowed-steps *env*) (:name tag))
+                            (str "Not in " (:allowed-steps *env*)))))]
     (binding [*dry-run?* skip-reason]
       (reporter/begin-step (:reporter *env*) opts)
       (f)
