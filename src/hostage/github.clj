@@ -11,9 +11,9 @@
 
 (def ^:private ^:dynamic *repo* nil)
 
-(defn- gh-repo []
-  (when *repo*
-    (str "--repo " *repo*)))
+(defn- maybe-append-repo [cmd]
+  (cond-> cmd
+    *repo* (str " --repo " *repo*)))
 
 #_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
 (defprotocol IGHFile
@@ -73,23 +73,23 @@
 (defn release-create [release {:keys [body]}]
   (flow/shell {:out :string
                :in (or body "")}
-              "gh release create"
-              (gh-repo)
+              (maybe-append-repo
+               "gh release create")
               (:version-name release)
               "--notes-file" "-"))
 
 #_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
 (defn release-upload [release & files]
   (apply flow/shell {:out :string}
-         "gh release upload"
-         (gh-repo)
+         (maybe-append-repo
+          "gh release upload")
          (:version-name release)
          (flatten files)))
 
 (defn search-issues [search-query]
   (-> (shell {:out :string}
-             "gh issue list"
-             (gh-repo)
+             (maybe-append-repo
+              "gh issue list")
              "--search" search-query
              "--json" "number,labels,title,body")
       :out
