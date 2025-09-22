@@ -103,7 +103,9 @@
 
 (defn run-step [{:keys [always-run? tag] :as opts} f]
   (let [skip-reason (or (when (and *dry-run?* (not always-run?))
-                          "dry-run")
+                          (or (when (string? *dry-run?*)
+                                *dry-run?*)
+                              "dry-run"))
                         ((:disabled-tags *env*) tag)
                         (when (:allowed-steps *env*)
                           (when-not ((:allowed-steps *env*) (:name tag))
