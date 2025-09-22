@@ -89,6 +89,7 @@
    :disabled-tags (extract-disabled-tags args)
    :allowed-steps (extract-allowed-steps args)
    :reporter (extract-reporter args)
+   :warn-on-expect? (some #{"--warn-on-expect"} args)
    ::state (atom default-execution-state)})
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
