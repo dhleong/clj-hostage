@@ -108,7 +108,7 @@
                               "dry-run"))
                         ((:disabled-tags *env*) tag)
                         (when (:allowed-steps *env*)
-                          (when-not ((:allowed-steps *env*) (:name tag))
+                          (when-not ((:allowed-steps *env*) (:name opts))
                             (str "Not in " (:allowed-steps *env*)))))]
     (binding [*dry-run?* skip-reason]
       (reporter/begin-step (:reporter *env*) opts)
