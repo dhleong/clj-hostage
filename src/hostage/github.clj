@@ -56,9 +56,9 @@
            "--method" "PUT"
            "-H" "Accept: application/vnd.github+json"
            (ghfile->api-path this)
-           "-f" "message=" message
-           "-f" "content=" (str->base64 (str contents))
-           "-f" "sha=" sha)
+           "-f" (str "message=" message)
+           "-f" (str "content=" (str->base64 (str contents)))
+           "-f" (str "sha=" sha))
           :out))))
 
 #_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
