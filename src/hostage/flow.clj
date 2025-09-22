@@ -6,7 +6,7 @@
    [hostage.expect :refer [assertion-message]]
    [hostage.reporter.append-only :as append-only]
    [hostage.reporter.proto :as reporter]
-   [hostage.state :refer [*debug* *dry-run?* *env*]]))
+   [hostage.state :refer [*debug* *dry-run?* *env* *task-stack*]]))
 
 (declare run-step)
 
@@ -101,16 +101,30 @@
        (when (= *file* (System/getProperty "babashka.file"))
          (apply ~'-main *command-line-args*))))
 
+(defn- allow-listed?
+  "A step is allow-listed if its name or the name of any of its
+   ancestors was specified via --allow.
+   It is an error to call this function when nothing has been
+   allow-listed (IE: --allow was not passed at all)"
+  [opts]
+  (let [allowed-step? (:allowed-steps *env*)
+        _ (assert allowed-step?)]
+    (or (allowed-step? (:name opts))
+        (some allowed-step?
+              (map :name *task-stack*)))))
+
 (defn run-step [{:keys [always-run? tag] :as opts} f]
   (let [skip-reason (or (when (and *dry-run?* (not always-run?))
                           (or (when (string? *dry-run?*)
                                 *dry-run?*)
                               "dry-run"))
                         ((:disabled-tags *env*) tag)
-                        (when (:allowed-steps *env*)
-                          (when-not ((:allowed-steps *env*) (:name opts))
-                            (str "Not in " (:allowed-steps *env*)))))]
-    (binding [*dry-run?* skip-reason]
+                        (when (and (:allowed-steps *env*)
+                                   (not (allow-listed? opts)))
+                          (str "Not in " (:allowed-steps *env*))))
+        task-stack ((fnil conj []) *task-stack* opts)]
+    (binding [*dry-run?* skip-reason
+              *task-stack* task-stack]
       (reporter/begin-step (:reporter *env*) opts)
       (f)
       (reporter/end-step (:reporter *env*) opts))))
