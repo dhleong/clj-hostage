@@ -70,13 +70,20 @@
   {:version-name version-name})
 
 #_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
-(defn release-create [release {:keys [body]}]
-  (flow/shell {:out :string
-               :in (or body "")}
-              (maybe-append-repo
-               "gh release create")
-              (:version-name release)
-              "--notes-file" "-"))
+(defn release-create [release {:keys [body title]}]
+  (let [tag (:version-name release)
+        extra-args (cond
+                     ; Use gh's default auto title
+                     (= :auto title) []
+                     (some? title) ["--title" title]
+                     :else ["--title" tag])]
+    (apply flow/shell {:out :string
+                       :in (or body "")}
+           (maybe-append-repo
+            "gh release create")
+           tag
+           "--notes-file" "-"
+           extra-args)))
 
 #_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
 (defn release-upload [release & files]
